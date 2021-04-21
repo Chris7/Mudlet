@@ -26,6 +26,7 @@
 #include <QPointer>
 #include <QTreeWidget>
 #include "post_guard.h"
+#include <QWidget>
 
 class Host;
 
@@ -36,7 +37,7 @@ class TTreeWidget : public QTreeWidget
 
 public:
     Q_DISABLE_COPY(TTreeWidget)
-    TTreeWidget(QWidget* pW);
+    TTreeWidget(QWidget* pW = new QWidget());
     Qt::DropActions supportedDropActions() const override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;

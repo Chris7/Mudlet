@@ -222,6 +222,7 @@ dlgTriggerEditor::dlgTriggerEditor(Host* pH)
     connect(mpKeysMainArea->pushButton_key_grabKey, &QAbstractButton::clicked, this, &dlgTriggerEditor::slot_key_grab);
 
     mpVarsMainArea = new dlgVarsMainArea(this);
+    mpVarsMainArea->setInterface(mpHost->getLuaInterface());
     layoutColumn->addWidget(mpVarsMainArea, 1);
 
     mpScriptsMainArea = new dlgScriptsMainArea(this);
@@ -241,6 +242,9 @@ dlgTriggerEditor::dlgTriggerEditor(Host* pH)
     mpSourceEditorEdbee->setAutoScrollMargin(20);
     mpSourceEditorEdbee->setPlaceholderText(tr("-- add your Lua code here"));
     mpSourceEditorEdbeeDocument = mpSourceEditorEdbee->textDocument();
+
+    mpVarsMainArea->mpSourceEditorEdbee = mpSourceEditorEdbee;
+    mpVarsMainArea->mpSourceEditorEdbeeDocument = mpSourceEditorEdbeeDocument;
 
     // Update the status bar on changes
     connect(mpSourceEditorEdbee->controller(), &edbee::TextEditorController::updateStatusTextSignal, this, &dlgTriggerEditor::slot_updateStatusBar);
@@ -388,16 +392,6 @@ dlgTriggerEditor::dlgTriggerEditor(Host* pH)
     treeWidget_timers->setRootIsDecorated(false);
     treeWidget_timers->setContextMenuPolicy(Qt::ActionsContextMenu);
     connect(treeWidget_timers, &QTreeWidget::itemClicked, this, &dlgTriggerEditor::slot_item_selected_save);
-
-    treeWidget_variables->hide();
-    treeWidget_variables->setHost(mpHost);
-    treeWidget_variables->setIsVarTree();
-    treeWidget_variables->setColumnCount(2);
-    treeWidget_variables->hideColumn(1);
-    treeWidget_variables->header()->hide();
-    treeWidget_variables->setRootIsDecorated(false);
-    treeWidget_variables->setContextMenuPolicy(Qt::ActionsContextMenu);
-    connect(treeWidget_variables, &QTreeWidget::itemClicked, this, &dlgTriggerEditor::slot_item_selected_save);
 
     treeWidget_keys->hide();
     treeWidget_keys->setHost(mpHost);
@@ -640,9 +634,6 @@ dlgTriggerEditor::dlgTriggerEditor(Host* pH)
     connect(treeWidget_aliases, &QTreeWidget::itemSelectionChanged, this, &dlgTriggerEditor::slot_tree_selection_changed);
     connect(treeWidget_actions, &QTreeWidget::itemClicked, this, &dlgTriggerEditor::slot_action_selected);
     connect(treeWidget_actions, &QTreeWidget::itemSelectionChanged, this, &dlgTriggerEditor::slot_tree_selection_changed);
-    connect(treeWidget_variables, &QTreeWidget::itemClicked, this, &dlgTriggerEditor::slot_var_selected);
-    connect(treeWidget_variables, &QTreeWidget::itemChanged, this, &dlgTriggerEditor::slot_var_changed);
-    connect(treeWidget_variables, &QTreeWidget::itemSelectionChanged, this, &dlgTriggerEditor::slot_tree_selection_changed);
     connect(treeWidget_searchResults, &QTreeWidget::itemClicked, this, &dlgTriggerEditor::slot_item_selected_search_list);
 
     // Force the size of the triangle icon button that shows/hides the search
@@ -725,7 +716,6 @@ dlgTriggerEditor::dlgTriggerEditor(Host* pH)
     treeWidget_timers->hide();
     treeWidget_scripts->hide();
     treeWidget_keys->hide();
-    treeWidget_variables->hide();
 
     readSettings();
 
@@ -898,7 +888,7 @@ void dlgTriggerEditor::slot_setTreeWidgetIconSize(const int s)
     treeWidget_scripts->setIconSize(newSize);
     treeWidget_keys->setIconSize(newSize);
     treeWidget_actions->setIconSize(newSize);
-    treeWidget_variables->setIconSize(newSize);
+    mpVarsMainArea->treeWidget_variables->setIconSize(newSize);
 }
 
 void dlgTriggerEditor::closeEvent(QCloseEvent* event)
@@ -3473,13 +3463,13 @@ void dlgTriggerEditor::addVar(bool isFolder)
     VarUnit* vu = lI->getVarUnit();
 
     QStringList nameL;
-    nameL << QString(isFolder ? "New table name" : "New variable name");
+    nameL << QString(isFolder ? tr("New table name") : tr("New variable name"));
 
     QTreeWidgetItem* pParent;
     QTreeWidgetItem* pNewItem;
     QTreeWidgetItem* cItem = treeWidget_variables->currentItem();
-    TVar* cVar = vu->getWVar(cItem);
     if (cItem) {
+        TVar* cVar = vu->getWVar(cItem);
         if (cVar && cVar->getValueType() == LUA_TTABLE) {
             pParent = cItem;
         } else {
@@ -6898,29 +6888,7 @@ void dlgTriggerEditor::slot_show_keys()
 void dlgTriggerEditor::slot_show_vars()
 {
     changeView(EditorViewType::cmVarsView);
-    repopulateVars();
-    mpCurrentVarItem = nullptr;
-    checkBox_displayAllVariables->show();
-    checkBox_displayAllVariables->setChecked(showHiddenVars);
-    QTreeWidgetItem* pI = treeWidget_variables->topLevelItem(0);
-    if (!pI || pI == treeWidget_variables->currentItem() || !pI->childCount()) {
-        // There is no root item, we are on the root item or there are no other
-        // items - so show the help message:
-        mpVarsMainArea->hide();
-        mpSourceEditorArea->hide();
-        showInfo(msgInfoAddVar);
-    } else {
-        mpVarsMainArea->show();
-        mpSourceEditorArea->show();
-        slot_var_selected(treeWidget_variables->currentItem());
-    }
-    if (!mVarEditorSplitterState.isEmpty()) {
-        splitter_right->restoreState(mVarEditorSplitterState);
-    } else {
-        const QList<int> sizes = {30, 900, 30};
-        splitter_right->setSizes(sizes);
-        mVarEditorSplitterState = splitter_right->saveState();
-    }
+    mpVarsMainArea->repopulateVars();
 }
 
 void dlgTriggerEditor::show_vars()
